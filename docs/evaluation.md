@@ -1,6 +1,6 @@
 # Evaluation
 
-These are future acceptance protocols, not reported results. Keep deterministic runtime correctness, endpoint capability calibration, and empirical model performance separate.
+These are future acceptance protocols except where an executed, bounded slice is explicitly reported below. Keep deterministic runtime correctness, endpoint capability calibration, and empirical model performance separate.
 
 Routine tests use deterministic model-server and tool fixtures. Live inference is an explicit, finite-budget evaluation, not an implicit network dependency of unit tests.
 
@@ -23,6 +23,23 @@ Routine tests use deterministic model-server and tool fixtures. Live inference i
 | Extension boundary | A minimal non-coding fixture supplies domain state, actions, artifacts, and verification without coding assumptions leaking into the core. |
 
 Use fixtures with independently specified expected outcomes. Mocks prove contracts, not model intelligence, prompt quality, or production compatibility with a named server.
+
+### First M1 slice evidence
+
+The proposal-validation slice was checked on 2026-09-14 with Go 1.25.6. Go commands used the local toolchain with `GOPROXY=off` and `GOSUMDB=off`; no dependencies were installed or network/model calls made.
+
+| Check | Observed result |
+|---|---|
+| Behavioral red | After adding declarations and an explicitly unimplemented validator, all 100 test executions failed for missing validation behavior. The package compiled; valid updates, stale revisions, scope violations, disallowed operations, and limits failed for the intended reason. |
+| Green and refactor | `go test -count=1 -json -cover .\...` on Windows/amd64: 19 top-level tests, 100 executions including subtests, all passed, no skips, 100.0% statement coverage. Accepted test and module hashes were unchanged after red. |
+| Windows checks | `go test -race -count=1 .\...`, `go vet .\...`, and `gofmt` checks passed. The race build used GCC 13.2.0 targeting `x86_64-w64-mingw32`. |
+| Linux check | Cross-compiled the test binary for Linux/amd64 with `CGO_ENABLED=0`, then actually executed it in Arch Linux under WSL2, kernel `6.6.87.2-microsoft-standard-WSL2`. The same 19 top-level tests and 100 executions passed with no skips. This was not a Linux-native Go build, vet run, or race-detector run. |
+
+The frozen `internal/state/proposal_test.go` SHA-256 is `2884896F3AD17C6248C0D3F74857B387CE3339B9AA2B54D5E4DBD82C71F05AE4`. The checked `internal/state/proposal.go` SHA-256 is `A7A884B5AB690B9DD0D3B4CA1179FAE79F39CEA803CD2D8E6683604B06DC791E`.
+
+An initial API-absence run could not compile; it was not used as the behavioral-red proof. An initial WSL invocation failed before collecting tests because PowerShell split unquoted test flags; quoting `-test.v=test2json` and `-test.count=1` corrected the runner invocation without changing tests.
+
+This evidence covers only the pure proposal boundary and its test-only non-coding fixture. It does not complete M1 or any first-release gate, demonstrate a production workflow, or validate persistence, model calls, token accounting, commands, scheduling, worktrees, a CLI, procedural graphs, or end-to-end reliability.
 
 ## Go acceptance fixture
 

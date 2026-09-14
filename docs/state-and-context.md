@@ -57,6 +57,26 @@ Record the tool result and commit only supported outcome transitions. Verificati
 
 A model-written `done` field or successful-looking log line is never sufficient to advance completion.
 
+### Implemented proposal boundary
+
+The first M1 slice is `internal/state`, a pure Go boundary, not a state store or universal workflow framework. Schema version 1 contains a worker identity, host revision, plan text, and a bounded collection of hypotheses. The test-only catalog-review fixture exercises this contract without source-code or command assumptions.
+
+| Surface | Implemented rule |
+|---|---|
+| Identity and schema | The host supplies the current state and an independent `Scope`. The proposal echoes run/worker identity and schema version; mismatches are rejected, not assigned to the state. Only `CurrentSchemaVersion` (1) is supported. |
+| Revision | `ExpectedRevision` must equal the current worker revision. A valid candidate advances it once, including action-only proposals. Zero is a valid initial revision; an exhausted `uint64` revision fails explicitly. |
+| Updates | Ordered `SetPlan` and `AppendHypothesis` operations only. Plan updates contain text alone; each appended hypothesis cites one exact host-approved evidence ID/version. Unknown kinds, deletion, whole-state replacement, and writes to facts, permissions, verification, or completion are not supported. |
+| Action intent | The optional `InspectEvidence` intent must be allowed by the host scope and target an approved evidence ID/version. It contains no outcome or success field. Matching a reference does not prove a hypothesis or verify evidence contents. |
+| Limits | `MaxUpdates`, `MaxPlanBytes`, `MaxHypothesisBytes`, and `MaxHypotheses` are explicit positive integers; zero and negative values are invalid configuration. Exact limits are accepted, excess is rejected without truncation. Text limits count UTF-8 bytes, not context tokens. |
+
+Proposed text must be valid, nonblank UTF-8; empty text cannot serve as a deletion. A host state may start with an empty plan and no hypotheses. Existing state must already satisfy the supplied schema, scope, and limits; validation never repairs or silently drops it.
+
+`Validate(current, scope, limits, proposal)` validates all updates and the accompanying action together. Rejection returns a nil result and an explicit error, leaving every input unchanged, including slice backing storage. Success returns a detached `ValidationResult` containing candidate `Next` state and optional `Action` intent; it does not modify the authoritative state or execute anything. Callers can use `errors.Is` with the exported error sentinels; messages identify the failing field or operation, and stale-revision errors include both revisions.
+
+The host must construct scope independently of model output, serialize authoritative commits, and recheck revisions and authorization when applying a candidate. Facts and their provenance, permissions, verifier results, and completion remain outside the model-writable state. An assertion retained in a hypothesis is still only a hypothesis.
+
+There is no wire decoder: Go field types constrain values, and runtime validation rejects unsupported operation values. Strict model-response decoding, general workflow adapters, dependency revisions, durable action intent, observations, persistence, execution, and recovery remain subsequent work. This candidate-only contract does not yet provide an atomic persisted transition or replay protection.
+
 ## Evidence and persistence
 
 Use SQLite for state, event metadata, dependencies, approvals, action lifecycle, and artifact references. Store large tool outputs, test reports, and artifacts in files with stable identifiers and integrity metadata.
