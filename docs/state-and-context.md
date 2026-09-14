@@ -67,7 +67,10 @@ The first M1 slice is `internal/state`, a pure Go boundary, not a state store or
 | Revision | `ExpectedRevision` must equal the current worker revision. A valid candidate advances it once, including action-only proposals. Zero is a valid initial revision; an exhausted `uint64` revision fails explicitly. |
 | Updates | Ordered `SetPlan` and `AppendHypothesis` operations only. Plan updates contain text alone; each appended hypothesis cites one exact host-approved evidence ID/version. Unknown kinds, deletion, whole-state replacement, and writes to facts, permissions, verification, or completion are not supported. |
 | Action intent | The optional `InspectEvidence` intent must be allowed by the host scope and target an approved evidence ID/version. It contains no outcome or success field. Matching a reference does not prove a hypothesis or verify evidence contents. |
-| Limits | `MaxUpdates`, `MaxPlanBytes`, `MaxHypothesisBytes`, and `MaxHypotheses` are explicit positive integers; zero and negative values are invalid configuration. Exact limits are accepted, excess is rejected without truncation. Text limits count UTF-8 bytes, not context tokens. |
+| Worker detail limits | `MaxUpdates` bounds proposal operations, `MaxPlanBytes` and `MaxHypothesisBytes` bound text, and `MaxHypotheses` bounds the retained hypothesis collection. |
+| Metadata limits | `MaxIdentifierBytes` bounds each run ID, worker ID, evidence ID, and evidence version. `MaxScopeEntries` bounds `Scope.Evidence` and `Scope.AllowedActions` separately, counting duplicate entries. |
+
+All six limits are required positive integers, with no implicit defaults; zero and negative values are invalid configuration. Host callers must supply both metadata caps as well as the worker detail caps. Exact limits are accepted, excess is rejected without truncation, and byte limits count UTF-8 bytes rather than characters or tokens. Scope collection sizes are checked before traversing their entries. All scope identifiers are checked, even unused evidence references; matching against that scope bounds identifiers retained in accepted state and action intent. These limits do not replace future wire-size and complete-request token accounting.
 
 Proposed text must be valid, nonblank UTF-8; empty text cannot serve as a deletion. A host state may start with an empty plan and no hypotheses. Existing state must already satisfy the supplied schema, scope, and limits; validation never repairs or silently drops it.
 
@@ -76,6 +79,12 @@ Proposed text must be valid, nonblank UTF-8; empty text cannot serve as a deleti
 The host must construct scope independently of model output, serialize authoritative commits, and recheck revisions and authorization when applying a candidate. Facts and their provenance, permissions, verifier results, and completion remain outside the model-writable state. An assertion retained in a hypothesis is still only a hypothesis.
 
 There is no wire decoder: Go field types constrain values, and runtime validation rejects unsupported operation values. Strict model-response decoding, general workflow adapters, dependency revisions, durable action intent, observations, persistence, execution, and recovery remain subsequent work. This candidate-only contract does not yet provide an atomic persisted transition or replay protection.
+
+#### Evidence scope lifetime
+
+`Scope.Evidence` is pinned to the worker-state revision. The host must not change it while accepting proposals against that revision. Any change requires an authorized host transition with compatible state and an advanced revision, or a new worker identity. The validator receives no prior scope, so it cannot detect an unversioned scope change or perform a migration.
+
+Replacing approved evidence `v1` with `v2` while retaining a hypothesis that cites `v1` makes the current state invalid, including for plan-only proposals. The host must explicitly handle that state at the revision boundary, preserving historical provenance rather than silently relabeling `v1` hypotheses as `v2`. Keeping both versions approved preserves the hypothesis but also keeps `v1` inspectable whenever `InspectEvidence` is allowed. This scope is an allowlist, not a historical-only archive; migration machinery and any separation of historical provenance from current action authorization remain deferred.
 
 ## Evidence and persistence
 

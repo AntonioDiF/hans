@@ -68,6 +68,8 @@ type Proposal struct {
 }
 
 // Scope must come from the host, independently of the proposal's claimed identity.
+// Evidence is pinned to the worker-state revision; the host must coordinate any
+// change with compatible state and a new revision or worker.
 type Scope struct {
 	Identity       Identity
 	Evidence       []EvidenceRef
@@ -80,6 +82,8 @@ type Limits struct {
 	MaxPlanBytes       int
 	MaxHypothesisBytes int
 	MaxHypotheses      int
+	MaxIdentifierBytes int // Per run/worker ID and evidence ID/version.
+	MaxScopeEntries    int // Per scope collection, including duplicate entries.
 }
 
 // ValidationResult is a detached candidate and optional intent, not a committed
@@ -106,7 +110,7 @@ func Validate(current WorkerState, scope Scope, limits Limits, proposal Proposal
 	if err := validateLimits(limits); err != nil {
 		return nil, err
 	}
-	if err := validateScope(scope); err != nil {
+	if err := validateScope(scope, limits); err != nil {
 		return nil, err
 	}
 	if err := validateState(current, scope, limits); err != nil {
@@ -137,12 +141,12 @@ func Validate(current WorkerState, scope Scope, limits Limits, proposal Proposal
 			if update.Evidence != (EvidenceRef{}) {
 				return nil, fmt.Errorf("%w: %s.evidence is not permitted for set_plan", ErrInvalidProposal, path)
 			}
-			if err := validateText(update.Text, limits.MaxPlanBytes); err != nil {
+			if err := validateText(update.Text, limits.MaxPlanBytes, ErrInvalidProposal); err != nil {
 				return nil, fmt.Errorf("%s.text: %w", path, err)
 			}
 			next.Plan = update.Text
 		case AppendHypothesis:
-			if err := validateText(update.Text, limits.MaxHypothesisBytes); err != nil {
+			if err := validateText(update.Text, limits.MaxHypothesisBytes, ErrInvalidProposal); err != nil {
 				return nil, fmt.Errorf("%s.text: %w", path, err)
 			}
 			if !slices.Contains(scope.Evidence, update.Evidence) {
@@ -182,6 +186,8 @@ func validateLimits(limits Limits) error {
 		{"max_plan_bytes", limits.MaxPlanBytes},
 		{"max_hypothesis_bytes", limits.MaxHypothesisBytes},
 		{"max_hypotheses", limits.MaxHypotheses},
+		{"max_identifier_bytes", limits.MaxIdentifierBytes},
+		{"max_scope_entries", limits.MaxScopeEntries},
 	} {
 		if limit.value <= 0 {
 			return fmt.Errorf("%w: limits.%s must be positive, got %d", ErrInvalidLimits, limit.name, limit.value)
@@ -190,13 +196,25 @@ func validateLimits(limits Limits) error {
 	return nil
 }
 
-func validateScope(scope Scope) error {
-	if !nonblankUTF8(scope.Identity.RunID) || !nonblankUTF8(scope.Identity.WorkerID) {
-		return fmt.Errorf("%w: scope.identity requires nonblank UTF-8 run and worker IDs", ErrInvalidScope)
+func validateScope(scope Scope, limits Limits) error {
+	if len(scope.Evidence) > limits.MaxScopeEntries {
+		return fmt.Errorf("%w: scope.evidence has %d entries, maximum %d", ErrLimitExceeded, len(scope.Evidence), limits.MaxScopeEntries)
+	}
+	if len(scope.AllowedActions) > limits.MaxScopeEntries {
+		return fmt.Errorf("%w: scope.allowed_actions has %d entries, maximum %d", ErrLimitExceeded, len(scope.AllowedActions), limits.MaxScopeEntries)
+	}
+	if err := validateText(scope.Identity.RunID, limits.MaxIdentifierBytes, ErrInvalidScope); err != nil {
+		return fmt.Errorf("scope.identity.run_id: %w", err)
+	}
+	if err := validateText(scope.Identity.WorkerID, limits.MaxIdentifierBytes, ErrInvalidScope); err != nil {
+		return fmt.Errorf("scope.identity.worker_id: %w", err)
 	}
 	for i, evidence := range scope.Evidence {
-		if !nonblankUTF8(evidence.ID) || !nonblankUTF8(evidence.Version) {
-			return fmt.Errorf("%w: scope.evidence[%d] requires a nonblank UTF-8 ID and version", ErrInvalidScope, i)
+		if err := validateText(evidence.ID, limits.MaxIdentifierBytes, ErrInvalidScope); err != nil {
+			return fmt.Errorf("scope.evidence[%d].id: %w", i, err)
+		}
+		if err := validateText(evidence.Version, limits.MaxIdentifierBytes, ErrInvalidScope); err != nil {
+			return fmt.Errorf("scope.evidence[%d].version: %w", i, err)
 		}
 	}
 	for i, kind := range scope.AllowedActions {
@@ -218,7 +236,7 @@ func validateState(current WorkerState, scope Scope, limits Limits) error {
 		return fmt.Errorf("%w: state.revision is exhausted", ErrInvalidState)
 	}
 	if current.Plan != "" {
-		if err := validateText(current.Plan, limits.MaxPlanBytes); err != nil {
+		if err := validateText(current.Plan, limits.MaxPlanBytes, ErrInvalidProposal); err != nil {
 			return fmt.Errorf("%w: state.plan: %v", ErrInvalidState, err)
 		}
 	}
@@ -226,7 +244,7 @@ func validateState(current WorkerState, scope Scope, limits Limits) error {
 		return fmt.Errorf("%w: state.hypotheses exceeds %d entries", ErrInvalidState, limits.MaxHypotheses)
 	}
 	for i, hypothesis := range current.Hypotheses {
-		if err := validateText(hypothesis.Text, limits.MaxHypothesisBytes); err != nil {
+		if err := validateText(hypothesis.Text, limits.MaxHypothesisBytes, ErrInvalidProposal); err != nil {
 			return fmt.Errorf("%w: state.hypotheses[%d].text: %v", ErrInvalidState, i, err)
 		}
 		if !slices.Contains(scope.Evidence, hypothesis.Evidence) {
@@ -236,12 +254,12 @@ func validateState(current WorkerState, scope Scope, limits Limits) error {
 	return nil
 }
 
-func validateText(text string, maxBytes int) error {
+func validateText(text string, maxBytes int, invalid error) error {
 	if len(text) > maxBytes {
 		return fmt.Errorf("%w: text has %d bytes, maximum %d", ErrLimitExceeded, len(text), maxBytes)
 	}
 	if !nonblankUTF8(text) {
-		return fmt.Errorf("%w: text must be nonblank UTF-8", ErrInvalidProposal)
+		return fmt.Errorf("%w: text must be nonblank UTF-8", invalid)
 	}
 	return nil
 }

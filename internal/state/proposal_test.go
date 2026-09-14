@@ -55,6 +55,8 @@ func newCatalogFixture() catalogFixture {
 			MaxPlanBytes:       64,
 			MaxHypothesisBytes: 64,
 			MaxHypotheses:      3,
+			MaxIdentifierBytes: 64,
+			MaxScopeEntries:    4,
 		},
 		proposal: state.Proposal{
 			SchemaVersion:    1,
@@ -99,7 +101,7 @@ func checkFixture(t *testing.T, f catalogFixture, wantErr error, path string) *s
 			t.Errorf("error %q does not identify %q", err, path)
 		}
 		if result != nil {
-			t.Errorf("rejected proposal returned a candidate or accepted action: %#v", result)
+			t.Error("rejected proposal returned a candidate or accepted action")
 		}
 		return nil
 	}
