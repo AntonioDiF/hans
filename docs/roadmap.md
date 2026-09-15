@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current state:** documentation bootstrap is delivered by this packet. Runtime implementation has not started. This roadmap defines future work; it is not authorization to execute every milestone.
+**Current state:** documentation bootstrap and the first bounded M1 slice are delivered: a minimal Go module and typed, worker-local proposal validation with a non-coding fixture. M1 remains in progress; its other contracts and the executable runtime are not implemented. This roadmap is not authorization to execute every milestone.
 
 The priority order is bounded state, protected TDD, reviewed procedural guidance, then evaluated evolution. Concurrency and Git worktrees are first-release requirements, not later optimizations.
 
@@ -23,9 +23,9 @@ M2, M3, and M4 may be independent workstreams after M1 contracts stabilize. Thei
 
 ## Next implementation task
 
-When implementation is requested, begin with a bounded part of M1. Read the relevant [component](architecture.md#components), [workflow](architecture.md#workflow-contract), and [state](state-and-context.md#state-ownership) sections rather than this entire packet.
+The [first proposal boundary](state-and-context.md#implemented-proposal-boundary) is implemented. The next bounded M1 task is a typed, host-observed action-outcome and evidence-provenance contract: bind an observation to the corresponding accepted intent and versioned evidence, distinguish failed or unknown outcomes from success, and reject mismatched or stale observations. Do not add persistence or tool execution as part of that contract slice.
 
-Specify the first typed boundary and its failure cases, add the relevant failing contract tests, and implement only what those contracts require. Establish deterministic model/tool fixtures before wiring live inference.
+Read the relevant [component](architecture.md#components), [workflow](architecture.md#workflow-contract), and [state-transition](state-and-context.md#state-transitions) sections rather than this entire packet. Specify the next boundary's failure cases, establish meaningful failing tests, and implement only what those contracts require. Keep facts, verification, and completion host-owned; retain deterministic fixtures before wiring live inference.
 
 Do not create a large speculative package tree or assume a tokenizer/SQLite dependency without documenting compatibility and build constraints. Do not claim the future CLI works until an executable path and its checks exist.
 

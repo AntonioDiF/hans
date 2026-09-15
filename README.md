@@ -2,7 +2,7 @@
 
 A standalone, local-model-first agentic harness designed for bounded context and reliable long-running work.
 
-**Status: guidelines and architecture only.** There is no runtime, executable CLI, or buildable Go module yet. The [roadmap](docs/roadmap.md) separates the first release from later experiments.
+**Status: first M1 slice implemented; M1 is not complete.** A buildable Go module and pure [worker-proposal validator](docs/state-and-context.md#implemented-proposal-boundary) support bounded plans, evidence-linked hypotheses, and action intent. There is no executable harness or CLI. The [roadmap](docs/roadmap.md) identifies the next bounded task.
 
 ## Priorities
 
@@ -28,6 +28,17 @@ Every model call has an initial **8k input ceiling, concretely 8,192 tokens**, c
 The first release includes concurrent independent workers, configurable per-model capacity, SQLite-backed state, external evidence files, and isolated Git worktrees. The coordinator verifies the combined result before applying it to the selected workspace. No automatic commits are permitted; harness-managed worktree runs require an existing committed base.
 
 Approved repositories and commands are trusted initially. Worktrees prevent edit collisions; they are **not security sandboxes**.
+
+## Development
+
+The module is `github.com/AntonioDiF/hans`, requires Go 1.25.6 or newer, and uses only the standard library. From the repository root on Windows:
+
+```powershell
+go test .\...
+go vet .\...
+```
+
+On Linux, use `./...` as the package pattern. The non-coding catalog fixture is test-only, not a production workflow. See [slice verification evidence](docs/evaluation.md#first-m1-slice-evidence) for executed checks and platform limits.
 
 ## Documentation map
 

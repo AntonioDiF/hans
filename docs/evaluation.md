@@ -1,6 +1,6 @@
 # Evaluation
 
-These are future acceptance protocols, not reported results. Keep deterministic runtime correctness, endpoint capability calibration, and empirical model performance separate.
+These are future acceptance protocols except where an executed, bounded slice is explicitly reported below. Keep deterministic runtime correctness, endpoint capability calibration, and empirical model performance separate.
 
 Routine tests use deterministic model-server and tool fixtures. Live inference is an explicit, finite-budget evaluation, not an implicit network dependency of unit tests.
 
@@ -23,6 +23,23 @@ Routine tests use deterministic model-server and tool fixtures. Live inference i
 | Extension boundary | A minimal non-coding fixture supplies domain state, actions, artifacts, and verification without coding assumptions leaking into the core. |
 
 Use fixtures with independently specified expected outcomes. Mocks prove contracts, not model intelligence, prompt quality, or production compatibility with a named server.
+
+### First M1 slice evidence
+
+The proposal-validation slice and its metadata-hardening follow-up were checked on 2026-09-14 with Go 1.25.6. The initial boundary was checkpointed at `34af995`; the results below cover the updated validator. Go commands used the local toolchain with `GOPROXY=off` and `GOSUMDB=off`; these checks installed no dependencies and made no network/model calls.
+
+| Check | Observed result |
+|---|---|
+| Behavioral red | The initial compiling, unimplemented validator failed all 100 executions. For the metadata follow-up, declarations without enforcement produced 145 executions: 122 passed and 23 failed. Failures reproduced accepted oversized identifiers, including 1 MiB evidence IDs, ignored metadata configuration limits, and oversized scope collections. Rollover regressions already passed against existing behavior. |
+| Green and refactor | `go test -count=1 -json -cover .\...` on Windows/amd64: 24 top-level tests, 145 executions including subtests, all passed, no skips, 100.0% statement coverage. Frozen test hashes were unchanged after the metadata red; the original assertions remain intact. The fixture supplies the two new required limits, and rejection diagnostics no longer dump an arbitrarily large candidate. |
+| Windows checks | `go test -race -count=1 .\...`, `go vet .\...`, `go build .\...` with `CGO_ENABLED=0`, and `gofmt` checks passed. The race build used GCC 13.2.0 targeting `x86_64-w64-mingw32`. |
+| Linux check | Cross-compiled the test binary for Linux/amd64 with `CGO_ENABLED=0`, then actually executed it in Arch Linux under WSL2, kernel `6.6.87.2-microsoft-standard-WSL2`. The same 24 top-level tests and 145 executions passed with no skips. This was not a Linux-native Go build, vet run, or race-detector run. |
+
+The frozen `internal/state/proposal_test.go` SHA-256 is `0AC5E0E0134D4CA13AE41E6DD4406F3C86BD535B0DDF18E13EDDD3803A2F99F6`, and `internal/state/metadata_test.go` is `3920B0D4B16FAFF2EE09814928D77A8730026939964227D1B5D234760A5AD6DB`. The checked `internal/state/proposal.go` SHA-256 is `1A3DE663F20DFBCE52D9A8A87BBEEBBAC225F84743624D023E42D6468A795534`. The module is unchanged from the initial checkpoint.
+
+API-absence runs could not compile and were not used as behavioral-red proof. During the initial slice, a WSL invocation failed before collecting tests because PowerShell split unquoted test flags; quoting `-test.v=test2json` and `-test.count=1` corrected the runner invocation without changing tests. The follow-up used those quoted flags.
+
+This evidence covers only the pure proposal boundary and its test-only non-coding fixture. It does not complete M1 or any first-release gate, demonstrate a production workflow, or validate persistence, model calls, token accounting, commands, scheduling, worktrees, a CLI, procedural graphs, or end-to-end reliability.
 
 ## Go acceptance fixture
 
