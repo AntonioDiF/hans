@@ -41,6 +41,29 @@ API-absence runs could not compile and were not used as behavioral-red proof. Du
 
 This evidence covers only the pure proposal boundary and its test-only non-coding fixture. It does not complete M1 or any first-release gate, demonstrate a production workflow, or validate persistence, model calls, token accounting, commands, scheduling, worktrees, a CLI, procedural graphs, or end-to-end reliability.
 
+### Second M1 slice evidence
+
+The host-observation slice was checked on 2026-09-15 from the merged slice-1 baseline `56495dd`, using Go 1.27.1 on Windows/amd64. The user approved the acceptance contract before implementation. Checks used `GOTOOLCHAIN=local`, `GOPROXY=off`, `GOSUMDB=off`, and `CGO_ENABLED=0`; `GOFLAGS`, `GOEXPERIMENT`, and `GOWORK` were empty. No dependencies were added or installed, and no network/model calls were made.
+
+| Check | Observed result |
+|---|---|
+| Behavioral red | A compiling, unimplemented `ValidateObservation` stub failed all 274 new executions across 17 top-level tests. All 145 existing executions across 24 top-level tests still passed; nothing was skipped. API-absence compilation failures were not used as behavioral-red proof. |
+| Frozen green | `go test -count=1 -json .\internal\state` passed all 419 distinct executions across 41 top-level tests: 274 observation cases and 145 existing cases, with no failures or skips. The final check verified the expected run/outcome counts and all frozen artifact hashes, not just the process exit code. |
+| Windows checks | `go vet .\internal\state`, `go build .\...`, and `go test -count=1 -cover .\internal\state` passed, with 100.0% statement coverage. `gofmt` checks on the three new Go files passed. |
+| Linux cross-compilation | `go test -c` with `GOOS=linux`, `GOARCH=amd64`, and `CGO_ENABLED=0` produced a Linux test binary; `go version -m` confirmed its target and toolchain. The temporary binary was removed. It was not executed, so this is not Linux runtime or Linux-native toolchain evidence. |
+
+The four test files stayed frozen through implementation. The existing proposal implementation, proposal tests, metadata tests, and module file remain byte-for-byte unchanged in this checkout. Hashes below identify the checked working-tree bytes:
+
+| Artifact | SHA-256 |
+|---|---|
+| `internal/state/observation_test.go` | `1F8F7679061C27B80329A6152FC82BFCE078F4E284F812479FF7723F21E13E63` |
+| `internal/state/observation_metadata_test.go` | `07F56A228021B0BBE4BC191FFEEB669D17FAF28F11E83CD746FE004BE4BD7335` |
+| `internal/state/observation.go` | `7722E9DB1593BB9AB53D726C1FBD8ECB630091FCFF4D2A78B1B0059886B5DF6D` |
+
+The race detector was not run: this environment had CGO disabled and no `gcc` on PATH. Only Docker Desktop's WSL distribution was available; Linux execution was not attempted. The first slice's historical race/Linux results do not cover the new observation code.
+
+This evidence covers deterministic, bounded metadata validation and the test-only catalog fixture. It does not establish evidence integrity, actual tool effects, lifecycle/replay handling, persistence, verification verdicts, completion, or a runnable harness. M1 and the first-release gates remain incomplete.
+
 ## Go acceptance fixture
 
 Create a disposable, committed Go repository with two independent, explicitly specified coding changes and a combined integration surface. Keep requirements visible; held-out tests may check those requirements but must not introduce hidden requirements.

@@ -1,6 +1,6 @@
 # Architecture
 
-This document specifies the intended runtime. Only the minimal Go module and [first worker-proposal boundary](state-and-context.md#implemented-proposal-boundary) are implemented so far; the component table below is not a list of delivered services. Use the [roadmap](roadmap.md) to select implementation work.
+This document specifies the intended runtime. Only the minimal Go module, [worker-proposal boundary](state-and-context.md#implemented-proposal-boundary), and [host-observation boundary](state-and-context.md#implemented-observation-boundary) are implemented so far; the component table below is not a list of delivered services. Use the [roadmap](roadmap.md) to select implementation work.
 
 ## Scope
 

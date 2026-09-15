@@ -78,13 +78,35 @@ Proposed text must be valid, nonblank UTF-8; empty text cannot serve as a deleti
 
 The host must construct scope independently of model output, serialize authoritative commits, and recheck revisions and authorization when applying a candidate. Facts and their provenance, permissions, verifier results, and completion remain outside the model-writable state. An assertion retained in a hypothesis is still only a hypothesis.
 
-There is no wire decoder: Go field types constrain values, and runtime validation rejects unsupported operation values. Strict model-response decoding, general workflow adapters, dependency revisions, durable action intent, observations, persistence, execution, and recovery remain subsequent work. This candidate-only contract does not yet provide an atomic persisted transition or replay protection.
+There is no wire decoder: Go field types constrain values, and runtime validation rejects unsupported operation values. Strict model-response decoding, general workflow adapters, dependency revisions, durable action intent, observation recording, persistence, execution, and recovery remain subsequent work. Host observations have a separate [pure validation boundary](#implemented-observation-boundary); neither boundary provides an atomic persisted transition or replay protection.
 
 #### Evidence scope lifetime
 
 `Scope.Evidence` is pinned to the worker-state revision. The host must not change it while accepting proposals against that revision. Any change requires an authorized host transition with compatible state and an advanced revision, or a new worker identity. The validator receives no prior scope, so it cannot detect an unversioned scope change or perform a migration.
 
 Replacing approved evidence `v1` with `v2` while retaining a hypothesis that cites `v1` makes the current state invalid, including for plan-only proposals. The host must explicitly handle that state at the revision boundary, preserving historical provenance rather than silently relabeling `v1` hypotheses as `v2`. Keeping both versions approved preserves the hypothesis but also keeps `v1` inspectable whenever `InspectEvidence` is allowed. This scope is an allowlist, not a historical-only archive; migration machinery and any separation of historical provenance from current action authorization remain deferred.
+
+### Implemented observation boundary
+
+The second M1 slice adds `ValidateObservation(accepted, record, limits, observation)` in `internal/state`. It validates a host-observed action result against independent host acceptance and evidence metadata. All schema-bearing inputs require `CurrentSchemaVersion` (1). It is not an action runner, evidence store, or lifecycle transition.
+
+| Surface | Implemented rule |
+|---|---|
+| Accepted action | `AcceptedAction` pins the host-assigned action ID, run/worker identity, acceptance revision, and exact `ActionIntent`. Only schema version 1 and `InspectEvidence` are supported. A proposal candidate does not establish acceptance; the host supplies this snapshot separately. |
+| Result provenance | `EvidenceRecord` contains a versioned result reference and its producing `AcceptedAction`. Producer identity, action ID, revision, kind, and inspected source/version must match the supplied acceptance snapshot. The result reference identifies recorded observation evidence; the inspection target alone is not proof of a result. |
+| Observation binding | `Observation` must echo the accepted identity, action ID, and revision, and the recorded result evidence ID/version. All comparisons are exact and case-sensitive, with no trimming, normalization, or substitution of a different version. |
+| Status | `OutcomeSucceeded`, `OutcomeFailed`, and `OutcomeUnknown` have distinct values `succeeded`, `failed`, and `unknown`. All are valid observed outcomes. Missing or unsupported statuses fail explicitly; success-looking detail text cannot override the supplied status. |
+| Bounds | `ObservationLimits.MaxIdentifierBytes` bounds every run/worker ID, action ID, and evidence ID/version across all inputs. `MaxDetailBytes` bounds the observation's explanation independently. Both limits must be positive, with no defaults. All strings must be nonblank valid UTF-8; exact byte limits are accepted and excess is rejected without truncation. |
+
+Every status requires a host evidence record and a bounded, nonblank `Detail`. For failed or unknown actions, the evidence can record an observed error or the loss of a result; it need not contain successful tool output. Missing evidence is a validation error, not an implicitly successful or synthesized unknown outcome. These byte bounds do not replace future wire-size or complete-input token enforcement.
+
+Rejection returns a nil outcome and an explicit error. `errors.Is` distinguishes `ErrInvalidAcceptedAction`, `ErrInvalidEvidenceRecord`, `ErrInvalidObservation`, and the shared configuration, limit, scope, and stale-revision errors. Diagnostics identify the invalid field; revision mismatches include both values.
+
+Acceptance returns a detached `ActionOutcome` preserving the accepted action, result provenance, status, and detail. A nil error means the record passed validation, not that the action succeeded. The function never changes worker state, promotes a hypothesis to a fact, expands an evidence scope, grants permission, assigns a verifier verdict, or advances completion.
+
+The revision identifies the immutable accepted-action snapshot, not the worker's latest revision. Zero and the maximum `uint64` value are valid snapshot revisions because observation validation does not increment either. Both earlier and later mismatched revisions are rejected. Checking the latest lifecycle state and deciding whether a late observation may change it remain host responsibilities.
+
+The host must supply trusted acceptance, evidence, and observation inputs rather than treating model-authored records as observations. These Go records describe provenance, not authentication: this boundary does not read evidence, verify integrity or actual tool effects, ensure action-ID uniqueness, check current-worker freshness, reject repeated calls, persist anything, or reconcile contradictory observations. Host-owned lifecycle validation and serialized commits are still needed before applying an outcome.
 
 ## Evidence and persistence
 
