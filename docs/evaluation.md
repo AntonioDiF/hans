@@ -76,6 +76,31 @@ This run closes the two recorded gaps for the second slice: Linux runtime execut
 
 This evidence covers deterministic, bounded metadata validation and the test-only catalog fixture. It does not establish evidence integrity, actual tool effects, lifecycle/replay handling, persistence, verification verdicts, completion, or a runnable harness. M1 and the first-release gates remain incomplete.
 
+### Third M1 slice evidence
+
+The action-lifecycle slice was checked on 2026-09-24 on Linux/amd64-native, from the merged slice-2 baseline `fafeeba`, using Go 1.27.1 (`go1.27.1-X:nodwarf5`) and GCC 16.2.1 for the race check. The user approved the acceptance contract, including fully terminal `unknown` and duplicate no-op semantics, before implementation. No dependencies were added or installed, and no network/model calls were made.
+
+| Check | Observed result |
+|---|---|
+| Behavioral red | A compiling, unimplemented `ApplyOutcome` stub failed all 211 new subtest executions across the 17 new top-level tests in the red file (647 total runs in the package at red time). All 41 existing top-level tests (274 observation and 145 proposal executions) still passed; nothing was skipped. API-absence compilation failures were not used as behavioral-red proof. |
+| Post-red test additions | Three approved-contract cases absent from the red file (zero/negative limits; unsupported lifecycle status; terminal conflict at maximum lifecycle revision) were added after the red run and verified red against the original stub before the final freeze. The final test file differs from the red file only by those additions and gofmt whitespace normalization; no existing assertion changed. |
+| Green | `go test -count=1 -json -cover ./internal/state` passed all 655 executions across 59 top-level tests: 236 new lifecycle cases and 419 existing cases, with no failures or skips. `-cover` reported 100.0% statement coverage. |
+| Race detector | `go test -count=1 -race ./internal/state` with `CGO_ENABLED=1` (GCC 16.2.1) passed with no races reported. |
+| Build, vet, formatting | `go build ./...` and `go vet ./...` passed; `gofmt -l internal/` reported no files. |
+| Windows cross-compilation | `go test -c` with `GOOS=windows`, `GOARCH=amd64`, and `CGO_ENABLED=0` produced a Windows test binary; `go version -m` confirmed its target and toolchain; the temporary binary was removed and not executed. |
+
+The user approved Linux-only verification for this slice; Windows is cross-compilation evidence only. Hashes below identify the checked working-tree bytes (SHA-256):
+
+| Artifact | SHA-256 |
+|---|---|
+| `internal/state/lifecycle_test.go` | `3AA9B16DF4AA34C78C537D988229EBB8552A8B0355B395C04317BC8AD3736F7D` |
+| `internal/state/lifecycle.go` | `B19E884F1BD34F385E982F58E65D76CE6211ABC4F8E72C8D0D48E2325332AC48` |
+| `internal/state/observation.go` | `9879C2A393A459E8B1FF9BA6523822964DD01B75CE86AF2D90BE3B8C77E4E538` |
+
+`observation.go` changed behavior-neutrally in this slice: `validateEvidenceRecord` now takes its sentinel as a parameter and delegates its producer-consistency checks to an extracted helper, preserving the original check order and diagnostics; the frozen observation and proposal suites, byte-for-byte unchanged, prove the preserved behavior. `proposal_test.go`, `metadata_test.go`, `observation_test.go`, `observation_metadata_test.go`, `proposal.go`, and `go.mod` remain byte-for-byte unchanged from the hashes recorded for the earlier slices.
+
+This evidence covers the deterministic action-lifecycle contract and its test-only catalog fixture. It does not establish persistence, reconciliation, verifier verdicts, completion, scheduling, worktrees, a CLI, or a runnable harness. M1 and the first-release gates remain incomplete.
+
 ## Go acceptance fixture
 
 Create a disposable, committed Go repository with two independent, explicitly specified coding changes and a combined integration surface. Keep requirements visible; held-out tests may check those requirements but must not introduce hidden requirements.

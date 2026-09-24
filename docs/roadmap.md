@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current state:** documentation bootstrap and two bounded M1 slices are delivered: a minimal Go module, worker-local proposal validation, and host-observed action-outcome/evidence-provenance validation with a non-coding fixture. M1 remains in progress; its other contracts and the executable runtime are not implemented. This roadmap is not authorization to execute every milestone.
+**Current state:** documentation bootstrap and three bounded M1 slices are delivered: a minimal Go module, worker-local proposal validation, host-observed action-outcome/evidence-provenance validation with a non-coding fixture, and a pure host-owned action-lifecycle transition contract. M1 remains in progress; its other contracts and the executable runtime are not implemented. This roadmap is not authorization to execute every milestone.
 
 The priority order is bounded state, protected TDD, reviewed procedural guidance, then evaluated evolution. Concurrency and Git worktrees are first-release requirements, not later optimizations.
 
@@ -23,7 +23,7 @@ M2, M3, and M4 may be independent workstreams after M1 contracts stabilize. Thei
 
 ## Next implementation task
 
-The [proposal boundary](state-and-context.md#implemented-proposal-boundary) and [host-observation boundary](state-and-context.md#implemented-observation-boundary) are implemented. The next proposed bounded M1 task is a pure, host-owned action-lifecycle transition contract: define when an observed outcome may change action state and specify explicit handling of duplicate, conflicting, and late observations. Keep the accepted-action snapshot pinned; do not mistake its revision for a current transition revision. Confirm the transition rules and acceptance cases before implementation. Persistence, tool execution, automatic retries, and reconciliation machinery remain outside that proposed contract slice.
+The [proposal boundary](state-and-context.md#implemented-proposal-boundary), [host-observation boundary](state-and-context.md#implemented-observation-boundary), and [action-lifecycle boundary](state-and-context.md#implemented-action-lifecycle-boundary) are implemented. The next proposed bounded M1 task is a pure, host-owned verification-verdict and completion contract: define how a host-observed verifier verdict binds to the exact artifacts, test/command configuration, and verifier version that produced it, and specify the only paths by which completion may advance. A model assertion, a successful-looking log line, or an action outcome never advances completion. Keep recorded verdicts immutable; later changes to relevant artifacts or verifier configuration invalidate affected verdicts explicitly rather than silently. Persistence, verifier execution, scheduling, and workflow adapters remain outside that proposed contract slice.
 
 Read the relevant [component](architecture.md#components), [workflow](architecture.md#workflow-contract), and [state-transition](state-and-context.md#state-transitions) sections rather than this entire packet. Specify the next boundary's failure cases, establish meaningful failing tests, and implement only what those contracts require. Keep facts, verification, and completion host-owned; retain deterministic fixtures before wiring live inference.
 

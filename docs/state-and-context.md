@@ -108,6 +108,26 @@ The revision identifies the immutable accepted-action snapshot, not the worker's
 
 The host must supply trusted acceptance, evidence, and observation inputs rather than treating model-authored records as observations. These Go records describe provenance, not authentication: this boundary does not read evidence, verify integrity or actual tool effects, ensure action-ID uniqueness, check current-worker freshness, reject repeated calls, persist anything, or reconcile contradictory observations. Host-owned lifecycle validation and serialized commits are still needed before applying an outcome.
 
+### Implemented action-lifecycle boundary
+
+The third M1 slice adds `ApplyOutcome(action, outcome, limits)` in `internal/state`. It is a pure, host-owned transition contract: it decides when a validated `ActionOutcome` may change host-owned `ActionState`, and how duplicate, conflicting, and late observations are handled. It is not a store, a runner, a scheduler, or a reconciliation engine.
+
+| Surface | Implemented rule |
+|---|---|
+| Action state | `ActionState` is host-owned and not model-writable. `SnapshotRevision` pins the immutable accepted-action snapshot and never changes; `Revision` is the lifecycle revision, separate from and not derived from the snapshot revision. Zero is a valid initial lifecycle revision. |
+| Status | `ActionPending`, `ActionSucceeded`, `ActionFailed`, `ActionUnknown` have distinct values `pending`, `succeeded`, `failed`, `unknown`. Missing or unsupported lifecycle or outcome statuses fail explicitly. |
+| Transition | A `pending` action transitions exactly once to the observed terminal status, records the outcome's result evidence as `LastEvidence`, and advances the lifecycle revision by one. This is the only revision-advancing path. |
+| Invariant | While `pending`, `LastEvidence` must be empty. In any terminal status, `LastEvidence` must be a valid bounded reference. Violations are `ErrInvalidActionState`, not repairs. |
+| Duplicate | A terminal action accepts an exact duplicate (same recorded evidence reference and same status) as a no-op: the returned state is exactly the input and the lifecycle revision does not advance. |
+| Conflict | Any other observation against a terminal action (different status, different evidence reference, or both) is rejected with `ErrConflictingObservation` and the state is unchanged. `unknown` is fully terminal: a later definite result is a conflict, not a silent recovery. |
+| Late observations | The contract has no timestamps. A late observation is observable only as a duplicate no-op or a conflict. Deciding whether a late observation may change a terminal state, and reconciling it, remain host responsibilities. |
+| Binding | The outcome must echo the state's identity, action ID, and snapshot revision; the recorded producer must match the accepted action. All comparisons are exact and case-sensitive. Mismatches return `ErrScopeViolation` or `ErrStaleRevision` with both values in diagnostics. |
+| Bounds | `ObservationLimits` (same type as the observation boundary) must be positive with no defaults. Identifiers and detail are bounded UTF-8; exact byte limits are accepted and excess rejected without truncation. |
+
+Rejection returns a nil state and an explicit error. `errors.Is` distinguishes `ErrInvalidActionState`, `ErrConflictingObservation`, and the shared configuration, limit, scope, and stale-revision sentinels. A nil error means the transition (or duplicate no-op) is valid, not that the action succeeded.
+
+The function re-validates the supplied outcome's schema, provenance, status, and detail before binding it to the state, so a malformed `ActionOutcome` cannot transition state. It never mutates its inputs, reads evidence, executes or retries an action, advances worker state, grants permission, assigns a verifier verdict, or advances completion. Persistence, tool execution, automatic retries, and reconciliation machinery remain outside this contract.
+
 ## Evidence and persistence
 
 Use SQLite for state, event metadata, dependencies, approvals, action lifecycle, and artifact references. Store large tool outputs, test reports, and artifacts in files with stable identifiers and integrity metadata.
