@@ -74,7 +74,7 @@ func ValidateObservation(accepted AcceptedAction, record EvidenceRecord, limits 
 	if err := validateAcceptedAction(accepted, limits.MaxIdentifierBytes, ErrInvalidAcceptedAction, "accepted_action"); err != nil {
 		return nil, err
 	}
-	if err := validateEvidenceRecord(record, accepted, limits.MaxIdentifierBytes); err != nil {
+	if err := validateEvidenceRecord(record, accepted, limits.MaxIdentifierBytes, ErrInvalidEvidenceRecord); err != nil {
 		return nil, err
 	}
 	if err := validateObservationFields(observation, limits); err != nil {
@@ -131,16 +131,22 @@ func validateAcceptedAction(action AcceptedAction, maxIdentifierBytes int, inval
 	return validateEvidenceRef(action.Intent.Evidence, maxIdentifierBytes, invalid, path+".intent.evidence")
 }
 
-func validateEvidenceRecord(record EvidenceRecord, accepted AcceptedAction, maxIdentifierBytes int) error {
+func validateEvidenceRecord(record EvidenceRecord, accepted AcceptedAction, maxIdentifierBytes int, invalid error) error {
 	if record.SchemaVersion != CurrentSchemaVersion {
-		return fmt.Errorf("%w: evidence_record.schema_version must be %d", ErrInvalidEvidenceRecord, CurrentSchemaVersion)
+		return fmt.Errorf("%w: evidence_record.schema_version must be %d", invalid, CurrentSchemaVersion)
 	}
-	if err := validateEvidenceRef(record.Ref, maxIdentifierBytes, ErrInvalidEvidenceRecord, "evidence_record.ref"); err != nil {
+	if err := validateEvidenceRef(record.Ref, maxIdentifierBytes, invalid, "evidence_record.ref"); err != nil {
 		return err
 	}
-	if err := validateAcceptedAction(record.Producer, maxIdentifierBytes, ErrInvalidEvidenceRecord, "evidence_record.producer"); err != nil {
+	if err := validateAcceptedAction(record.Producer, maxIdentifierBytes, invalid, "evidence_record.producer"); err != nil {
 		return err
 	}
+	return bindEvidenceRecordProducer(record, accepted)
+}
+
+// bindEvidenceRecordProducer checks that the recorded producer is exactly the
+// accepted action that produced the record.
+func bindEvidenceRecordProducer(record EvidenceRecord, accepted AcceptedAction) error {
 	if record.Producer.Identity != accepted.Identity {
 		return fmt.Errorf("%w: evidence_record.producer.identity does not match the accepted action", ErrScopeViolation)
 	}
