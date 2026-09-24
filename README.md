@@ -2,7 +2,7 @@
 
 A standalone, local-model-first agentic harness designed for bounded context and reliable long-running work.
 
-**Status: two bounded M1 slices implemented; M1 is not complete.** A buildable Go module provides pure [worker-proposal validation](docs/state-and-context.md#implemented-proposal-boundary) and [host-observation validation](docs/state-and-context.md#implemented-observation-boundary): bounded plans/hypotheses, action intents, and version-bound action outcomes. There is no executable harness or CLI. The [roadmap](docs/roadmap.md) identifies the next proposed bounded task.
+**Status: three bounded M1 slices implemented; M1 is not complete.** A buildable Go module provides pure [worker-proposal validation](docs/state-and-context.md#implemented-proposal-boundary), [host-observation validation](docs/state-and-context.md#implemented-observation-boundary), and [action-lifecycle transition validation](docs/state-and-context.md#implemented-action-lifecycle-boundary): bounded plans/hypotheses, action intents, version-bound action outcomes, and host-owned action-state transitions with explicit duplicate, conflict, and late-observation handling. There is no executable harness or CLI. The [roadmap](docs/roadmap.md) identifies the next proposed bounded task.
 
 ## Priorities
 
