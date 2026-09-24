@@ -62,6 +62,18 @@ The four test files stayed frozen through implementation. The existing proposal 
 
 The race detector was not run: this environment had CGO disabled and no `gcc` on PATH. Only Docker Desktop's WSL distribution was available; Linux execution was not attempted. The first slice's historical race/Linux results do not cover the new observation code.
 
+**Linux re-verification, 2026-09-24.** On the `slice-2` branch at `58aca72` with a clean working tree, a Linux/amd64-native environment with Go 1.27.1 (`go1.27.1-X:nodwarf5`) and GCC 16.2.1 re-ran the checks. `GOTOOLCHAIN=local`, `GOPROXY=off`, and `GOSUMDB=off` were set; `GOFLAGS`, `GOEXPERIMENT`, and `GOWORK` were empty; `CGO_ENABLED=0` applied to the regular checks and `CGO_ENABLED=1` to the race check. No dependencies were added or installed, and no network/model calls were made.
+
+| Check | Observed result |
+|---|---|
+| Build, vet, formatting | `go build ./...` and `go vet ./...` passed; `gofmt -l internal/` reported no files. |
+| Native green | `go test -count=1 -json ./internal/state` passed all 419 executions across 41 top-level tests (378 subtests): 274 observation cases and 145 existing cases, with no failures or skips. `-cover` reported 100.0% statement coverage. |
+| Race detector | `go test -count=1 -race ./internal/state` with `CGO_ENABLED=1` passed with no races reported. |
+| Windows cross-compilation | `go test -c` with `GOOS=windows`, `GOARCH=amd64`, and `CGO_ENABLED=0` produced a Windows test binary; `go version -m` confirmed its target and toolchain; the temporary binary was removed and not executed. |
+| Frozen hashes | The three recorded SHA-256 values above matched the working-tree bytes on this checkout. |
+
+This run closes the two recorded gaps for the second slice: Linux runtime execution and the race detector. It adds no new behavioral coverage; the test set and artifacts are unchanged.
+
 This evidence covers deterministic, bounded metadata validation and the test-only catalog fixture. It does not establish evidence integrity, actual tool effects, lifecycle/replay handling, persistence, verification verdicts, completion, or a runnable harness. M1 and the first-release gates remain incomplete.
 
 ## Go acceptance fixture
