@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current state:** documentation bootstrap and the first bounded M1 slice are delivered: a minimal Go module and typed, worker-local proposal validation with a non-coding fixture. M1 remains in progress; its other contracts and the executable runtime are not implemented. This roadmap is not authorization to execute every milestone.
+**Current state:** documentation bootstrap and two bounded M1 slices are delivered: a minimal Go module, worker-local proposal validation, and host-observed action-outcome/evidence-provenance validation with a non-coding fixture. M1 remains in progress; its other contracts and the executable runtime are not implemented. This roadmap is not authorization to execute every milestone.
 
 The priority order is bounded state, protected TDD, reviewed procedural guidance, then evaluated evolution. Concurrency and Git worktrees are first-release requirements, not later optimizations.
 
@@ -23,7 +23,7 @@ M2, M3, and M4 may be independent workstreams after M1 contracts stabilize. Thei
 
 ## Next implementation task
 
-The [first proposal boundary](state-and-context.md#implemented-proposal-boundary) is implemented. The next bounded M1 task is a typed, host-observed action-outcome and evidence-provenance contract: bind an observation to the corresponding accepted intent and versioned evidence, distinguish failed or unknown outcomes from success, and reject mismatched or stale observations. Do not add persistence or tool execution as part of that contract slice.
+The [proposal boundary](state-and-context.md#implemented-proposal-boundary) and [host-observation boundary](state-and-context.md#implemented-observation-boundary) are implemented. The next proposed bounded M1 task is a pure, host-owned action-lifecycle transition contract: define when an observed outcome may change action state and specify explicit handling of duplicate, conflicting, and late observations. Keep the accepted-action snapshot pinned; do not mistake its revision for a current transition revision. Confirm the transition rules and acceptance cases before implementation. Persistence, tool execution, automatic retries, and reconciliation machinery remain outside that proposed contract slice.
 
 Read the relevant [component](architecture.md#components), [workflow](architecture.md#workflow-contract), and [state-transition](state-and-context.md#state-transitions) sections rather than this entire packet. Specify the next boundary's failure cases, establish meaningful failing tests, and implement only what those contracts require. Keep facts, verification, and completion host-owned; retain deterministic fixtures before wiring live inference.
 

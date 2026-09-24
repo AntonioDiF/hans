@@ -1,6 +1,6 @@
 # Agent contract
 
-This is the always-on guide for developing hans. A minimal Go module and worker-proposal validator implement the first bounded M1 slice; the rest of the runtime remains planned.
+This is the always-on guide for developing hans. A minimal Go module implements two bounded M1 slices: worker-proposal validation and host-observed action-outcome/provenance contracts. The rest of the runtime remains planned.
 
 ## Work within scope
 

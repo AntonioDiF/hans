@@ -2,7 +2,7 @@
 
 A standalone, local-model-first agentic harness designed for bounded context and reliable long-running work.
 
-**Status: first M1 slice implemented; M1 is not complete.** A buildable Go module and pure [worker-proposal validator](docs/state-and-context.md#implemented-proposal-boundary) support bounded plans, evidence-linked hypotheses, and action intent. There is no executable harness or CLI. The [roadmap](docs/roadmap.md) identifies the next bounded task.
+**Status: two bounded M1 slices implemented; M1 is not complete.** A buildable Go module provides pure [worker-proposal validation](docs/state-and-context.md#implemented-proposal-boundary) and [host-observation validation](docs/state-and-context.md#implemented-observation-boundary): bounded plans/hypotheses, action intents, and version-bound action outcomes. There is no executable harness or CLI. The [roadmap](docs/roadmap.md) identifies the next proposed bounded task.
 
 ## Priorities
 
@@ -38,7 +38,7 @@ go test .\...
 go vet .\...
 ```
 
-On Linux, use `./...` as the package pattern. The non-coding catalog fixture is test-only, not a production workflow. See [slice verification evidence](docs/evaluation.md#first-m1-slice-evidence) for executed checks and platform limits.
+On Linux, use `./...` as the package pattern. The non-coding catalog fixture is test-only, not a production workflow. See [slice verification evidence](docs/evaluation.md#second-m1-slice-evidence) for executed checks and platform limits.
 
 ## Documentation map
 
